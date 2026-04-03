@@ -22,10 +22,10 @@ def get_data():
         print("Humidity:", humidity)
 
         # Simple logic (irrigation decision)
-        if moisture < 30:
-            irrigation = "ON"
-        else:
-            irrigation = "OFF"
+        if moisture > 2000 or Temperature > 30 or Humidity < 40:
+    irrigation = "ON"
+     else:
+    irrigation = "OFF"
 
         # Response ESP32 ko bhejna
         return jsonify({
