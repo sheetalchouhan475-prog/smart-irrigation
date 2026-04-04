@@ -1,13 +1,26 @@
 from flask import Flask, request, jsonify
+from twilio.rest import Client
 
 app = Flask(__name__)
 
+# Twilio credentials
+account_sid = 'YOUR_SID'
+auth_token = 'YOUR_AUTH_TOKEN'
+client = Client(account_sid, auth_token)
+
+# Twilio & user number
+twilio_number = '+1XXXXXXXXXX'
+your_number = '+91XXXXXXXXXX'
+
+# Data store
 latest_data = {
     "moisture": "--",
     "temperature": "--",
     "humidity": "--",
     "irrigation": "--"
 }
+
+sms_sent = False
 
 @app.route('/')
 def home():
@@ -21,19 +34,30 @@ def home():
 
 @app.route('/data', methods=['GET'])
 def get_data():
-    global latest_data
+    global latest_data, sms_sent
 
     moisture = float(request.args.get('moisture'))
     temperature = float(request.args.get('temperature'))
     humidity = float(request.args.get('humidity'))
 
-    # 🔥 SMART LOGIC
-    if (moisture < 30 or temperature > 25 or humidity < 50):
+    # 🔥 SMART IRRIGATION LOGIC
+    if (moisture < 40 and temperature > 25 and humidity < 50):
         irrigation = "Irrigation Required ✅"
         pump = "ON"
+
+        # 📱 SMS SEND
+        if not sms_sent:
+            message = client.messages.create(
+                body=f"⚠️ Irrigation Required!\nMoisture: {moisture}%\nTemp: {temperature}C",
+                from_=twilio_number,
+                to=your_number
+            )
+            sms_sent = True
+
     else:
         irrigation = "Irrigation Not Required ❌"
         pump = "OFF"
+        sms_sent = False
 
     # Store data
     latest_data["moisture"] = moisture
@@ -41,10 +65,7 @@ def get_data():
     latest_data["humidity"] = humidity
     latest_data["irrigation"] = irrigation
 
-    print("----- NEW DATA -----")
-    print(latest_data)
-
     return jsonify({
         "status": "success",
-        "irrigation": pump   # ESP32 ke liye ON/OFF hi bhejna hai
+        "irrigation": pump
     })
