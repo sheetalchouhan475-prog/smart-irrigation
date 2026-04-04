@@ -28,7 +28,7 @@ def get_data():
     humidity = float(request.args.get('humidity'))
 
     # 🔥 SMART LOGIC
-    if (moisture < 30 and temperature > 25 and humidity < 50):
+    if (moisture < 30 or temperature > 25 or humidity < 50):
         irrigation = "Irrigation Required ✅"
         pump = "ON"
     else:
