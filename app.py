@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 # Twilio credentials
 account_sid = 'ACf00f77d32e4e2194eb9d2b32ccdf5bd0'
-auth_token = '4bdafb9e1043b1a7ab9829211249a461'
+auth_token = '16b54a6dd2d5fe40f9b138db1d375400'
 client = Client(account_sid, auth_token)
 
 # Twilio & user number
