@@ -2,11 +2,11 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# 🔥 Global variable (data store karne ke liye)
 latest_data = {
     "moisture": "--",
     "temperature": "--",
-    "humidity": "--"
+    "humidity": "--",
+    "irrigation": "--"
 }
 
 @app.route('/')
@@ -16,32 +16,35 @@ def home():
     <p><b>Moisture:</b> {latest_data['moisture']} %</p>
     <p><b>Temperature:</b> {latest_data['temperature']} °C</p>
     <p><b>Humidity:</b> {latest_data['humidity']} %</p>
+    <p><b>Irrigation Status:</b> {latest_data['irrigation']}</p>
     """
 
 @app.route('/data', methods=['GET'])
 def get_data():
     global latest_data
 
-    moisture = request.args.get('moisture')
-    temperature = request.args.get('temperature')
-    humidity = request.args.get('humidity')
+    moisture = float(request.args.get('moisture'))
+    temperature = float(request.args.get('temperature'))
+    humidity = float(request.args.get('humidity'))
 
-    # Save latest data
+    # 🔥 SMART LOGIC
+    if (moisture < 30 and temperature > 25 and humidity < 50):
+        irrigation = "Irrigation Required ✅"
+        pump = "ON"
+    else:
+        irrigation = "Irrigation Not Required ❌"
+        pump = "OFF"
+
+    # Store data
     latest_data["moisture"] = moisture
     latest_data["temperature"] = temperature
     latest_data["humidity"] = humidity
+    latest_data["irrigation"] = irrigation
 
     print("----- NEW DATA -----")
     print(latest_data)
 
-    # irrigation logic
-    if float(moisture) < 30:
-        irrigation = "ON"
-    else:
-        irrigation = "OFF"
-
     return jsonify({
         "status": "success",
-        "irrigation": irrigation
+        "irrigation": pump   # ESP32 ke liye ON/OFF hi bhejna hai
     })
-  
