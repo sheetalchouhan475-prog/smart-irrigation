@@ -4,13 +4,13 @@ from twilio.rest import Client
 app = Flask(__name__)
 
 # Twilio credentials
-account_sid = 'YOUR_SID'
-auth_token = 'YOUR_AUTH_TOKEN'
+account_sid = 'ACf00f77d32e4e2194eb9d2b32ccdf5bd0'
+auth_token = '4bdafb9e1043b1a7ab9829211249a461'
 client = Client(account_sid, auth_token)
 
 # Twilio & user number
-twilio_number = '+1XXXXXXXXXX'
-your_number = '+91XXXXXXXXXX'
+twilio_number = '+16625640787'
+your_number = '+919179309961'
 
 # Data store
 latest_data = {
