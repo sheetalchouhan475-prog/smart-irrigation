@@ -15,8 +15,8 @@ your_number = "+919179309961"
 client = Client(account_sid, auth_token)
 
 # 🔹 Data store
-daily_data = []
-
+morning_data = []
+evening_data = []
 # 🔹 ML Model
 X = [
     [30, 35, 40],
@@ -42,13 +42,21 @@ def receive_data():
         temp = float(request.args.get('temperature'))
         humidity = float(request.args.get('humidity'))
 
-        daily_data.append([moisture, temp, humidity])
+        now = datetime.now()
+        hour = now.hour
 
-        print("Data:", moisture, temp, humidity)
+        # 🌅 Morning data (4–7)
+        if 4 <= hour < 7:
+            morning_data.append([moisture, temp, humidity])
+
+        # 🌇 Evening data (7–16)
+        elif 7 <= hour < 16:
+            evening_data.append([moisture, temp, humidity])
+
+        print("Stored:", moisture, temp, humidity)
         return "OK"
     except:
         return "Error"
-
 # 📩 SMS function
 def send_sms(message):
     try:
@@ -61,34 +69,50 @@ def send_sms(message):
     except Exception as e:
         print("SMS Error:", e)
 
-# 🤖 Decision route
-@app.route('/decision', methods=['GET'])
+# 🤖 Decision route@app.route('/decision', methods=['GET'])
 def decision():
     global last_morning_sent, last_evening_sent
 
     now = datetime.now()
     hour = now.hour
 
-    if len(daily_data) == 0:
-        return "NO_DATA"
+    # 🌅 Morning decision (7–8 AM)
+    if 7 <= hour <= 8 and not last_morning_sent:
 
-    # 🔹 Average
-    avg_m = sum(d[0] for d in daily_data) / len(daily_data)
-    avg_t = sum(d[1] for d in daily_data) / len(daily_data)
-    avg_h = sum(d[2] for d in daily_data) / len(daily_data)
+        if len(morning_data) == 0:
+            return "NO_DATA"
 
-    result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
+        avg_m = sum(d[0] for d in morning_data) / len(morning_data)
+        avg_t = sum(d[1] for d in morning_data) / len(morning_data)
+        avg_h = sum(d[2] for d in morning_data) / len(morning_data)
 
-    decision_text = "ON" if result == 1 else "OFF"
+        result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
+        decision_text = "ON" if result == 1 else "OFF"
 
-    # 🌅 Morning
-    if 6 <= hour <= 9 and not last_morning_sent:
+        send_sms(f"Morning (4-7 data): Pump {decision_text}")
+
         last_morning_sent = True
-
-        msg = f"Morning Update:\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%\nPump={decision_text}"
-        send_sms(msg)
-
         return decision_text
+
+    # 🌇 Evening decision (4–5 PM)
+    elif 16 <= hour <= 17 and not last_evening_sent:
+
+        if len(evening_data) == 0:
+            return "NO_DATA"
+
+        avg_m = sum(d[0] for d in evening_data) / len(evening_data)
+        avg_t = sum(d[1] for d in evening_data) / len(evening_data)
+        avg_h = sum(d[2] for d in evening_data) / len(evening_data)
+
+        result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
+        decision_text = "ON" if result == 1 else "OFF"
+
+        send_sms(f"Evening (7-4 data): Pump {decision_text}")
+
+        last_evening_sent = True
+        return decision_text
+
+    return "NO_ACTION"
 
     # 🌇 Evening
     elif 16 <= hour <= 19 and not last_evening_sent:
@@ -108,8 +132,8 @@ def reset():
 
     last_morning_sent = False
     last_evening_sent = False
-    daily_data = []
-
+    morning_data = []
+    evening_data = []
     return "Reset Done"
 
 if __name__ == "__main__":
