@@ -91,4 +91,26 @@ def decision():
         return decision_text
 
     # 🌇 Evening
-    elif 16 <=
+    elif 16 <= hour <= 19 and not last_evening_sent:
+        last_evening_sent = True
+
+        msg = f"Evening Update:\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%\nPump={decision_text}"
+        send_sms(msg)
+
+        return decision_text
+
+    return "NO_ACTION"
+
+# 🔄 Reset (next day)
+@app.route('/reset', methods=['GET'])
+def reset():
+    global last_morning_sent, last_evening_sent, daily_data
+
+    last_morning_sent = False
+    last_evening_sent = False
+    daily_data = []
+
+    return "Reset Done"
+
+if __name__ == "__main__":
+    app.run()
