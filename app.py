@@ -48,7 +48,7 @@ def get_data():
         # 📱 SMS SEND
         if not sms_sent:
             message = client.messages.create(
-                body=f"⚠️ Irrigation Required!\nMoisture: {moisture}%\nTemp: {temperature}C",
+                body=f"⚠️ Irrigation Required!",
                 from_=twilio_number,
                 to=your_number
             )
