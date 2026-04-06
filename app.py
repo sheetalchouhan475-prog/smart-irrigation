@@ -123,7 +123,7 @@ def send_sms(message):
         )
         print("SMS Sent")
     except Exception as e:
-        print("SMS Error:", e)
+        print("SMS Error:", str(e))
 
 
 if __name__ == "__main__":
