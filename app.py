@@ -2,6 +2,7 @@ from flask import Flask, request
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 from twilio.rest import Client
+import pandas as pd   # 🔥 NEW
 
 app = Flask(__name__)
 
@@ -13,24 +14,31 @@ your_number = "+919179309961"
 
 client = Client(account_sid, auth_token)
 
-# 🔹 Latest sensor data (dashboard ke liye)
+# 🔹 Latest sensor data
 latest_data = [0, 0, 0]
 
-# 🔹 SMS control (spam avoid)
+# 🔹 SMS control
 last_alert_sent = False
 
-# 🔹 ML Model (training data)
-X = [
-    [30, 35, 40],
-    [70, 25, 60],
-    [20, 38, 30],
-    [80, 22, 70],
-    [25, 36, 35]
-]
-y = [1, 0, 1, 0, 1]
+
+# 🔥 =========================
+# 🔥 ML MODEL (CSV BASED)
+# 🔥 =========================
+
+# CSV load karo
+data = pd.read_csv("data.csv")
+
+# ⚠️ Yaha apne CSV ke column name dalna
+# Example assume kar ra:
+# moisture, temperature, humidity, label
+
+X = data[['moisture', 'temperature', 'humidity']]
+y = data['label']
 
 model = DecisionTreeClassifier()
 model.fit(X, y)
+
+print("Model trained using CSV ✅")
 
 
 # 🌐 DASHBOARD
@@ -73,7 +81,7 @@ def dashboard():
     """
 
 
-# 📥 DATA + ML + SMS (REAL-TIME)
+# 📥 DATA + ML + SMS
 @app.route('/data', methods=['GET'])
 def receive_data():
     global latest_data, last_alert_sent
@@ -83,13 +91,12 @@ def receive_data():
         temp = float(request.args.get('temperature'))
         humidity = float(request.args.get('humidity'))
 
-        # 🔥 Update latest data
         latest_data = [moisture, temp, humidity]
 
-        # 🔥 ML prediction
+        # 🔥 ML prediction (REAL DATA)
         result = model.predict([[moisture, temp, humidity]])[0]
 
-        # 🔥 SMS only when irrigation required (no spam)
+        # 🔥 SMS only when needed
         if result == 1 and not last_alert_sent:
             send_sms(f"""
 🚨 Irrigation Required!
@@ -100,7 +107,6 @@ def receive_data():
 """)
             last_alert_sent = True
 
-        # 🔄 Reset when condition normal
         if result == 0:
             last_alert_sent = False
 
@@ -113,7 +119,7 @@ def receive_data():
         return "Error"
 
 
-# 📩 SMS function
+# 📩 SMS
 def send_sms(message):
     try:
         client.messages.create(
