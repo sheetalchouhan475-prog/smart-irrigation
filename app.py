@@ -123,7 +123,9 @@ def send_sms(message):
         )
         print("SMS Sent")
     except Exception as e:
-        print("SMS Error:", str(e))
+        import traceback
+        print("FULL ERROR")
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
