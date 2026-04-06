@@ -14,11 +14,11 @@ your_number = "+919179309961"
 
 client = Client(account_sid, auth_token)
 
-# 🔹 Data storage (window based)
-morning_data = []   # 4–7 AM
-evening_data = []   # 7 AM–4 PM
+# 🔹 Data storage
+morning_data = []
+evening_data = []
 
-# 🔹 Logistic Regression Model
+# 🔹 ML Model
 X = [
     [30, 35, 40],
     [70, 25, 60],
@@ -43,20 +43,15 @@ def receive_data():
         temp = float(request.args.get('temperature'))
         humidity = float(request.args.get('humidity'))
 
-        now = datetime.now()
-        hour = now.hour
+        hour = datetime.now().hour
 
         if 4 <= hour < 7:
             morning_data.append([moisture, temp, humidity])
-
         elif 7 <= hour < 16:
             evening_data.append([moisture, temp, humidity])
 
-        print("Stored:", moisture, temp, humidity)
         return "OK"
-
-    except Exception as e:
-        print("Error:", e)
+    except:
         return "Error"
 
 # 📩 SMS function
@@ -67,17 +62,15 @@ def send_sms(message):
             from_=twilio_number,
             to=your_number
         )
-        print("SMS Sent:", message)
     except Exception as e:
         print("SMS Error:", e)
 
-# 🤖 Decision route
+# 🤖 Decision
 @app.route('/decision', methods=['GET'])
 def decision():
     global last_morning_sent, last_evening_sent
 
-    now = datetime.now()
-    hour = now.hour
+    hour = datetime.now().hour
 
     # 🌅 Morning
     if 7 <= hour <= 8 and not last_morning_sent:
@@ -92,8 +85,10 @@ def decision():
         result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
         decision_text = "ON" if result == 1 else "OFF"
 
-        msg = f"🌅 Morning\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%\nPump={decision_text}"
-        send_sms(msg)
+        # ✅ SMS only if irrigation needed
+        if decision_text == "ON":
+            msg = f"🌅 Irrigation Required!\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%"
+            send_sms(msg)
 
         last_morning_sent = True
         return decision_text
@@ -111,8 +106,10 @@ def decision():
         result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
         decision_text = "ON" if result == 1 else "OFF"
 
-        msg = f"🌇 Evening\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%\nPump={decision_text}"
-        send_sms(msg)
+        # ✅ SMS only if irrigation needed
+        if decision_text == "ON":
+            msg = f"🌇 Irrigation Required!\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%"
+            send_sms(msg)
 
         last_evening_sent = True
         return decision_text
