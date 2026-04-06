@@ -1,6 +1,6 @@
 from flask import Flask, request
 from datetime import datetime
-from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 from twilio.rest import Client
 
@@ -28,12 +28,112 @@ X = [
 ]
 y = [1, 0, 1, 0, 1]
 
-model = LogisticRegression()
+model = DecisionTreeClassifier()
 model.fit(X, y)
 
 # 🔹 Flags
 last_morning_sent = False
 last_evening_sent = False
+
+
+# 🌐 DASHBOARD (NEW 🔥)
+@app.route('/')
+def dashboard():
+    # Latest data choose
+    if len(evening_data) > 0:
+        data = evening_data[-1]
+    elif len(morning_data) > 0:
+        data = morning_data[-1]
+    else:
+        data = [0, 0, 0]
+
+    moisture, temp, humidity = data
+
+    return f"""
+    <html>
+    <head>
+    <title>Smart Farming Dashboard</title>
+
+    <style>
+        body {{
+            margin: 0;
+            font-family: Arial;
+            background: #e8f5e9;
+            text-align: center;
+        }}
+
+        .header {{
+            background: green;
+            color: white;
+            padding: 15px;
+        }}
+
+        .data-box {{
+            margin-top: 60px;
+            display: inline-block;
+            padding: 25px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px gray;
+            font-size: 20px;
+        }}
+
+        .footer {{
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 14px;
+        }}
+
+        .left {{
+            text-align: left;
+        }}
+
+        .right {{
+            text-align: right;
+        }}
+    </style>
+    </head>
+
+    <body>
+
+    <!-- 🔝 Header -->
+    <div class="header">
+        <h1>Shivajirao Kadam Group of Institutes</h1>
+        <h3>From ECE Department</h3>
+    </div>
+
+    <h2>Smart Farming Dashboard 🌱</h2>
+
+    <!-- 📊 Center Data -->
+    <div class="data-box">
+        <p>🌱 Moisture: {moisture}</p>
+        <p>🌡️ Temperature: {temp}</p>
+        <p>💧 Humidity: {humidity}</p>
+    </div>
+
+    <!-- 👇 Footer -->
+    <div class="footer">
+        <div class="left">
+            <b>Created by:</b><br>
+            Pramila Yadav<br>
+            Sheetal Chouhan<br>
+            Mohit Verma
+        </div>
+
+        <div class="right">
+            <b>Guided by:</b><br>
+            Dr. Moumita Das
+        </div>
+    </div>
+
+    </body>
+    </html>
+    """
+
 
 # 📥 Data receive
 @app.route('/data', methods=['GET'])
@@ -43,7 +143,8 @@ def receive_data():
         temp = float(request.args.get('temperature'))
         humidity = float(request.args.get('humidity'))
 
-        hour = datetime.now().hour
+        now = datetime.now()
+        hour = now.hour
 
         if 4 <= hour < 7:
             morning_data.append([moisture, temp, humidity])
@@ -51,10 +152,13 @@ def receive_data():
             evening_data.append([moisture, temp, humidity])
 
         return "OK"
-    except:
+
+    except Exception as e:
+        print("Error:", e)
         return "Error"
 
-# 📩 SMS function
+
+# 📩 SMS
 def send_sms(message):
     try:
         client.messages.create(
@@ -65,14 +169,15 @@ def send_sms(message):
     except Exception as e:
         print("SMS Error:", e)
 
+
 # 🤖 Decision
 @app.route('/decision', methods=['GET'])
 def decision():
     global last_morning_sent, last_evening_sent
 
-    hour = datetime.now().hour
+    now = datetime.now()
+    hour = now.hour
 
-    # 🌅 Morning
     if 7 <= hour <= 8 and not last_morning_sent:
 
         if len(morning_data) == 0:
@@ -80,54 +185,3 @@ def decision():
 
         avg_m = sum(d[0] for d in morning_data) / len(morning_data)
         avg_t = sum(d[1] for d in morning_data) / len(morning_data)
-        avg_h = sum(d[2] for d in morning_data) / len(morning_data)
-
-        result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
-        decision_text = "ON" if result == 1 else "OFF"
-
-        # ✅ SMS only if irrigation needed
-        if decision_text == "ON":
-            msg = f"🌅 Irrigation Required!\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%"
-            send_sms(msg)
-
-        last_morning_sent = True
-        return decision_text
-
-    # 🌇 Evening
-    elif 16 <= hour <= 17 and not last_evening_sent:
-
-        if len(evening_data) == 0:
-            return "NO_DATA"
-
-        avg_m = sum(d[0] for d in evening_data) / len(evening_data)
-        avg_t = sum(d[1] for d in evening_data) / len(evening_data)
-        avg_h = sum(d[2] for d in evening_data) / len(evening_data)
-
-        result = model.predict(np.array([[avg_m, avg_t, avg_h]]))[0]
-        decision_text = "ON" if result == 1 else "OFF"
-
-        # ✅ SMS only if irrigation needed
-        if decision_text == "ON":
-            msg = f"🌇 Irrigation Required!\nMoisture={avg_m:.1f}%\nTemp={avg_t:.1f}C\nHumidity={avg_h:.1f}%"
-            send_sms(msg)
-
-        last_evening_sent = True
-        return decision_text
-
-    return "NO_ACTION"
-
-# 🔄 Reset
-@app.route('/reset', methods=['GET'])
-def reset():
-    global last_morning_sent, last_evening_sent
-    global morning_data, evening_data
-
-    last_morning_sent = False
-    last_evening_sent = False
-    morning_data = []
-    evening_data = []
-
-    return "Reset Done"
-
-if __name__ == "__main__":
-    app.run()
