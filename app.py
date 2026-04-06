@@ -7,10 +7,10 @@ from twilio.rest import Client
 app = Flask(__name__)
 
 # 🔹 Twilio credentials
-account_sid = "YOUR_ACCOUNT_SID"
-auth_token = "YOUR_AUTH_TOKEN"
-twilio_number = "+1XXXXXXXXXX"
-your_number = "+91XXXXXXXXXX"
+account_sid = "ACf00f77d32e4e2194eb9d2b32ccdf5bd0"
+auth_token = "16b54a6dd2d5fe40f9b138db1d375400"
+twilio_number = "+6625640787"
+your_number = "+919179309961"
 
 client = Client(account_sid, auth_token)
 
