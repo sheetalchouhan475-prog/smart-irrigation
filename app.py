@@ -33,7 +33,7 @@ data = pd.read_csv("data.csv")
 # moisture, temperature, humidity, label
 
 X = data[['moisture', 'temperature', 'humidity']]
-y = data['label']
+y = data['Pump Data']
 
 model = DecisionTreeClassifier()
 model.fit(X, y)
