@@ -46,7 +46,10 @@ def check_rain():
         data = requests.get(url).json()
         pop = data['list'][0]['pop']
         print("rain probability:", pop)
-        return 1 if pop > 0.6 else 0
+        if pop > 0.6:
+            return 1
+        else:
+            return 0
         except:
             print("rain API error")
             return 0
