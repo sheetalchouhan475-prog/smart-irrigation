@@ -4,3 +4,4 @@ twilio
 numpy
 scikit-learn
 pandas
+requests
