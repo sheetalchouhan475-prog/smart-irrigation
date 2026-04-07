@@ -44,7 +44,7 @@ def check_rain():
     try:
         url ="https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=dbf4091609c1594c6f912ff35c6b1bcd&units=metric"
         data = requests.get(url).json()
-        pop = data['list'][[0]['pop']
+        pop = data['list'][0]['pop']
         print("rain probability:", pop)
         return 1 if pop > 0.6 else 0
         except:
