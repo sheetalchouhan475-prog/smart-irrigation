@@ -39,9 +39,18 @@ model = DecisionTreeClassifier()
 model.fit(X, y)
 
 print("Model trained using CSV ✅")
-
-
-# 🌐 DASHBOARD
+# rain function
+def check_rain():
+    try:
+        url ="https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=dbf4091609c1594c6f912ff35c6b1bcd&units=metric"
+        data = requests.get(url).json()
+        pop = data['list'][[0]['pop']
+        print("rain probability:", pop)
+        return 1 if pop > 0.6 else 0
+        except:
+            print("rain API error")
+            return 0
+#dashboard decoration
 @app.route('/')
 def dashboard():
     moisture, temp, humidity = latest_data
@@ -52,36 +61,94 @@ def dashboard():
     <title>Smart Farming Dashboard</title>
     <style>
         body {{
+            margin: 0;
             font-family: Arial;
-            text-align: center;
             background: #e8f5e9;
+            text-align: center;
         }}
+
+        .header {{
+            background: green;
+            color: white;
+            padding: 15px;
+        }}
+
+        .header h2 {{
+            margin: 5px;
+            font-size: 18px;
+        }}
+
+        .header h3 {{
+            margin: 5px;
+            font-size: 14px;
+            font-weight: normal;
+        }}
+
         .box {{
-            margin-top: 50px;
-            padding: 20px;
+            margin-top: 60px;
+            padding: 25px;
             background: white;
             display: inline-block;
             border-radius: 10px;
             box-shadow: 2px 2px 10px gray;
+            font-size: 18px;
+        }}
+
+        .footer {{
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 14px;
+        }}
+
+        .left {{
+            text-align: left;
+        }}
+
+        .right {{
+            text-align: right;
         }}
     </style>
     </head>
+
     <body>
 
-    <h1>Smart Farming Dashboard 🌱</h1>
+    <!-- 🔝 Header -->
+    <div class="header">
+        <h2>Shivaji Rao Kadam Group of Institutions</h2>
+        <h3>Department of Electronics & Communication (EC)</h3>
+        <h1>Smart Farming Dashboard 🌱</h1>
+    </div>
 
+    <!-- 📊 Data -->
     <div class="box">
         <p>🌱 Moisture: {moisture}</p>
         <p>🌡️ Temperature: {temp}</p>
         <p>💧 Humidity: {humidity}</p>
     </div>
 
+    <!-- 👇 Footer -->
+    <div class="footer">
+        <div class="left">
+            <b>Created by:</b><br>
+            Sheetal Chouhan<br>
+            Pramila Yadav<br>
+            Mohit Verma
+        </div>
+
+        <div class="right">
+            <b>Guided by:</b><br>
+            Dr. Moumita Das
+        </div>
+    </div>
+
     </body>
     </html>
     """
-
-
-# 📥 DATA + ML + SMS
+# 📥 DATA + ML + rain + SMS
 @app.route('/data', methods=['GET'])
 def receive_data():
     global latest_data, last_alert_sent
@@ -95,11 +162,20 @@ def receive_data():
 
         # 🔥 ML prediction (REAL DATA)
         result = model.predict([[moisture, temp, humidity]])[0]
+        
+        #rain prediction
+        rain = check_rain()
+        
+        # final decision
+        if rain == 1:
+            decision = 0
+        else:
+            decision = result
 
-        # 🔥 SMS only when needed
-        if result == 1 and not last_alert_sent:
+        # 🔥 SMS only when irrigation  needed
+        if decision == 1 and not last_alert_sent:
             send_sms(f"""
-🚨 Irrigation Required!
+🚨 mitti sukh gyi hai pani do!
 
 🌱 Moisture: {moisture:.1f}%
 🌡 Temp: {temp:.1f}°C
@@ -107,10 +183,10 @@ def receive_data():
 """)
             last_alert_sent = True
 
-        if result == 0:
+        if decision == 0:
             last_alert_sent = False
 
-        print("Data:", latest_data, "Decision:", result)
+        print("Decision:", decision, "Rain:", rain)
 
         return "ON" if result == 1 else "OFF"
 
