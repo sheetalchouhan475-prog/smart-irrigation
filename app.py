@@ -50,6 +50,9 @@ def check_rain():
             return 1
         else:
             return 0
+    except Exception as e:
+        print("Rain API Error",e)
+        return 0
 #dashboard decoration
 @app.route('/')
 def dashboard():
