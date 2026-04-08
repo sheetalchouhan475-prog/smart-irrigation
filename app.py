@@ -3,6 +3,7 @@ from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 from twilio.rest import Client
 import pandas as pd   # 🔥 NEW
+import requests
 
 app = Flask(__name__)
 
@@ -141,12 +142,6 @@ def dashboard():
             Pramila Yadav<br>
             Mohit Verma
         </div>
-
-        <div class="right">
-            <b>Guided by:</b><br>
-            Dr. Moumita Das
-        </div>
-    </div>
 
     </body>
     </html>
