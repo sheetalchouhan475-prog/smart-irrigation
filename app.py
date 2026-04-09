@@ -91,9 +91,9 @@ def dashboard():
     <div class="footer">
      <div class="left">
      <b>Created by:</b><br>
-     sheetal chouhan<br>
-     pramila yadav<br>
-     mohit verma
+     Sheetal chouhan<br>
+     Pramila yadav<br>
+     Mohit verma
      </div>
         </div>
 
