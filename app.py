@@ -1,212 +1,139 @@
-from flask import Flask, request
-from sklearn.tree import DecisionTreeClassifier
-import numpy as np
-from twilio.rest import Client
-import pandas as pd   # 🔥 NEW
-import requests
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <DHT.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-app = Flask(__name__)
+// WiFi credentials
+const char* ssid = "HODCSE";
+const char* password = "12345678";
 
-# 🔹 Twilio credentials
-account_sid = "ACf00f77d32e4e2194eb9d2b32ccdf5bd0"
-auth_token = "0479df0f9c95c9a5bee07ba83b1fea20"
-twilio_number = "+16625640787"
-your_number = "+919179309961"
+// Server URL (HTTPS)
+String serverName = "https://smart-irrigation-wkta.onrender.com/data";
 
-client = Client(account_sid, auth_token)
+// Pins
+#define RELAY_PIN 26  
+#define SOIL_PIN 34  
+#define DHTPIN 4  
 
-# 🔹 Latest sensor data
-latest_data = [0, 0, 0]
+ // Thresholds (Mandaleey scale)
+int dryMandaleey = 900;  // Dry soil
+int wetMandaleey = 400;  // Wet soil
 
-# 🔹 SMS control
-last_alert_sent = False
+// DHT
+#define DHTTYPE DHT11  
+DHT dht(DHTPIN, DHTTYPE);
 
+// OLED
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-# 🔥 =========================
-# 🔥 ML MODEL (CSV BASED)
-# 🔥 =========================
+void setup() {
+  Serial.begin(115200);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
 
-# CSV load karo
-data = pd.read_csv("data.csv")
+  dht.begin();
 
-# ⚠️ Yaha apne CSV ke column name dalna
-# Example assume kar ra:
-# moisture, temperature, humidity, label
+  // OLED start
+  Wire.begin(21, 22);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("OLED not found");
+    while(true);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
 
-X = data[['moisture', 'temperature', 'humidity']]
-y = data['Pump Data']
+  // WiFi connect with timeout
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
 
-model = DecisionTreeClassifier()
-model.fit(X, y)
+  unsigned long startAttemptTime = millis();
+  const unsigned long wifiTimeout = 20000; // 20 sec timeout
 
-print("Model trained using CSV ✅")
-# rain function
-def check_rain():
-    try:
-        url ="https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=dbf4091609c1594c6f912ff35c6b1bcd&units=metric"
-        Wdata = requests.get(url).json()
-        pop = Wdata['list'][0]['pop']
-        print("rain probability:", pop)
-        if pop > 0.6:
-            return 1
-        else:
-            return 0
-    except Exception as e:
-        print("Rain API Error",e)
-        return 0
-#dashboard decoration
-@app.route('/')
-def dashboard():
-    moisture, temp, humidity = latest_data
+  while(WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < wifiTimeout){
+      Serial.print(".");
+      delay(500);
+  }
 
-    return f"""
-    <html>
-    <head>
-    <title>Smart Farming Dashboard</title>
-    <style>
-        body {{
-            margin: 0;
-            font-family: Arial;
-            background: #e8f5e9;
-            text-align: center;
-        }}
+  if(WiFi.status() == WL_CONNECTED){
+      Serial.println("\nConnected to WiFi ✅");
+      Serial.print("IP Address: ");
+      Serial.println(WiFi.localIP());
+  } else {
+      Serial.println("\nFailed to connect WiFi. Check SSID/Password.");
+  }
+}
 
-        .header {{
-            background: green;
-            color: white;
-            padding: 15px;
-        }}
+void loop() {
+  // 1. Read sensor values
+  int rawValue = analogRead(SOIL_PIN);
+  int espValue = map(rawValue, 0, 4095, 0, 100);  // ESP32 scale 0-100
 
-        .header h2 {{
-            margin: 5px;
-            font-size: 18px;
-        }}
+  // 2. Map ESP32 value to Mandaleey scale
+  int moisture = map(espValue, 0, 100, dryMandaleey, wetMandaleey);
 
-        .header h3 {{
-            margin: 5px;
-            font-size: 14px;
-            font-weight: normal;
-        }}
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
 
-        .box {{
-            margin-top: 60px;
-            padding: 25px;
-            background: white;
-            display: inline-block;
-            border-radius: 10px;
-            box-shadow: 2px 2px 10px gray;
-            font-size: 18px;
-        }}
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("DHT Error!");
+    return;
+  }
 
-        .footer {{
-            position: fixed;
-            bottom: 10px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            font-size: 14px;
-        }}
+  String pumpStatus = "OFF";
 
-        .left {{
-            text-align: left;
-        }}
+  // 3. Pump control based on Mandaleey value
+  if(moisture > 600){          // Soil dry
+      digitalWrite(RELAY_PIN, LOW);
+      pumpStatus = "ON";
+  } else if(moisture < 500){   // Soil wet
+      digitalWrite(RELAY_PIN, HIGH);
+      pumpStatus = "OFF";
+  } else {                      // Medium moisture
+      digitalWrite(RELAY_PIN, LOW);
+      pumpStatus = "OFF";
+  }
 
-        .right {{
-            text-align: right;
-        }}
-    </style>
-    </head>
+  // 4. Send data to server if WiFi connected
+  if(WiFi.status() == WL_CONNECTED) {
+      WiFiClientSecure client;
+      client.setInsecure(); // skip certificate verification
 
-    <body>
+      HTTPClient https;
+      String url = serverName + "?moisture=" + String(moisture) +
+                   "&temperature=" + String(temperature) +
+                   "&humidity=" + String(humidity);
 
-    <!-- 🔝 Header -->
-    <div class="header">
-        <h2>Shivaji Rao Kadam Group of Institutions</h2>
-        <h3>Department of Electronics & Communication (EC)</h3>
-        <h1>Smart Farming Dashboard 🌱</h1>
-    </div>
+      Serial.print("Sending data to: ");
+      Serial.println(url);
 
-    <!-- 📊 Data -->
-    <div class="box">
-        <p>🌱 Moisture: {moisture}</p>
-        <p>🌡️ Temperature: {temp}</p>
-        <p>💧 Humidity: {humidity}</p>
-    </div>
+      https.begin(client, url);
+      int httpResponseCode = https.GET();
+      Serial.print("HTTP Response code: ");
+      Serial.println(httpResponseCode);
 
-    <!-- 👇 Footer -->
-    <div class="footer">
-        <div class="left">
-            <b>Created by:</b><br>
-            Sheetal Chouhan<br>
-            Pramila Yadav<br>
-            Mohit Verma
-        </div>
+      if(httpResponseCode > 0){
+          String response = https.getString();
+          Serial.println("Server Response: " + response);
+      } else {
+          Serial.println("Error on HTTP request");
+      }
+      https.end();
+  }
 
-    </body>
-    </html>
-    """
-# 📥 DATA + ML + rain + SMS
-@app.route('/data', methods=['GET'])
-def receive_data():
-    global latest_data, last_alert_sent
+  // 5. Display on OLED
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Moisture: "); display.println(moisture); // Mandaleey scale
+  display.print("Temp: "); display.print(temperature); display.println(" C");
+  display.print("Humidity: "); display.print(humidity); display.println("%");
+  display.print("Pump: "); display.println(pumpStatus);
+  display.display();
 
-    try:
-        moisture = float(request.args.get('moisture'))
-        temp = float(request.args.get('temperature'))
-        humidity = float(request.args.get('humidity'))
-
-        latest_data = [moisture, temp, humidity]
-
-        # 🔥 ML prediction (REAL DATA)
-        result = model.predict([[moisture, temp, humidity]])[0]
-        
-        #rain prediction
-        rain = check_rain()
-        
-        # final decision
-        if rain == 1:
-            decision = 0
-        else:
-            decision = result
-
-        # 🔥 SMS only when irrigation  needed
-        if decision == 1 and not last_alert_sent:
-            send_sms(f"""
-🚨 mitti sukh gyi hai pani do!
-
-🌱 Moisture: {moisture:.1f}%
-🌡 Temp: {temp:.1f}°C
-💧 Humidity: {humidity:.1f}%
-""")
-            last_alert_sent = True
-
-        if decision == 0:
-            last_alert_sent = False
-
-        print("Decision:", decision, "Rain:", rain)
-
-        return "ON" if result == 1 else "OFF"
-
-    except Exception as e:
-        print("Error:", e)
-        return "Error"
-
-
-# 📩 SMS
-def send_sms(message):
-    try:
-        client.messages.create(
-            body=message,
-            from_=twilio_number,
-            to=your_number
-        )
-        print("SMS Sent")
-    except Exception as e:
-        import traceback
-        print("FULL ERROR")
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    app.run()
+  delay(10000); // wait 10 sec before next read
+}
