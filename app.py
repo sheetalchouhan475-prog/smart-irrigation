@@ -1,48 +1,43 @@
 from flask import Flask, request
 from sklearn.tree import DecisionTreeClassifier
-import numpy as np
-import pandas as pd   # 🔥 NEW
+import pandas as pd
+import requests
 
 app = Flask(__name__)
 
-
-# 🔹 Latest sensor data
+# 🔹 Latest data
 latest_data = [0, 0, 0]
+latest_rain = 0
+latest_status = "OFF"
+latest_irrigation = "No"
 
-
-# 🔥 =========================
-# 🔥 ML MODEL (CSV BASED)
-# 🔥 =========================
-
-# CSV load karo
+# 🔥 ML MODEL (CSV)
 data = pd.read_csv("data.csv")
 
-# ⚠️ Yaha apne CSV ke column name dalna
-# Example assume kar ra:
-# moisture, temperature, humidity, label
-
+# column names match karo apne CSV se
 X = data[['moisture', 'temperature', 'humidity']]
 y = data['Pump Data']
 
 model = DecisionTreeClassifier()
 model.fit(X, y)
 
-print("Model trained using CSV ✅")
-# rain function
+print("Model trained using CSV")
+
+# 🌧️ Rain function
 def check_rain():
     try:
-        url ="https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=dbf4091609c1594c6f912ff35c6b1bcd&units=metric"
-        Wdata = requests.get(url).json()
-        pop = Wdata['list'][0]['pop']
-        print("rain probability:", pop)
-        if pop > 0.6:
-            return 1
-        elif:
-            return 0
-        else:
-            print("rain API error")
-            return 0
-#dashboard decoration
+        url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=YOUR_API_KEY&units=metric"
+        wdata = requests.get(url).json()
+        pop = wdata['list'][0]['pop']
+
+        print("Rain:", pop)
+        return pop
+
+    except Exception as e:
+        print("Rain API Error:", e)
+        return 0
+
+# 🌐 DASHBOARD
 @app.route('/')
 def dashboard():
     moisture, temp, humidity = latest_data
@@ -65,19 +60,8 @@ def dashboard():
             padding: 15px;
         }}
 
-        .header h2 {{
-            margin: 5px;
-            font-size: 18px;
-        }}
-
-        .header h3 {{
-            margin: 5px;
-            font-size: 14px;
-            font-weight: normal;
-        }}
-
         .box {{
-            margin-top: 60px;
+            margin-top: 50px;
             padding: 25px;
             background: white;
             display: inline-block;
@@ -85,61 +69,42 @@ def dashboard():
             box-shadow: 2px 2px 10px gray;
             font-size: 18px;
         }}
-
-        .footer {{
-            position: fixed;
-            bottom: 10px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            font-size: 14px;
-        }}
-
-        .left {{
-            text-align: left;
-        }}
-
-        .right {{
-            text-align: right;
-        }}
     </style>
     </head>
 
     <body>
 
-    <!-- 🔝 Header -->
     <div class="header">
         <h2>Shivaji Rao Kadam Group of Institutions</h2>
-        <h3>Department of Electronics & Communication (EC)</h3>
-        <h1>Smart Farming Dashboard 🌱</h1>
+        <h3>EC Department</h3>
+        <h1>Smart Farming Dashboard</h1>
     </div>
 
-    <!-- 📊 Data -->
     <div class="box">
-        <p>🌱 Moisture: {moisture}</p>
-        <p>🌡️ Temperature: {temp}</p>
-        <p>💧 Humidity: {humidity}</p>
+        <p>Moisture: {moisture}</p>
+        <p>Temperature: {temp}</p>
+        <p>Humidity: {humidity}</p>
+        <p>Rain Chance: {latest_rain*100:.0f}%</p>
+        <p>Pump Status: {latest_status}</p>
+        <p>Irrigation Required: {latest_irrigation}</p>
     </div>
-
-    <!-- 👇 Footer -->
     <div class="footer">
-        <div class="left">
-            <b>Created by:</b><br>
-            Sheetal Chouhan<br>
-            Pramila Yadav<br>
-            Mohit Verma
+     <div class="left">
+     <b>Created by:</b><br>
+     sheetal chouhan<br>
+     pramila yadav<br>
+     mohit verma
+     </div>
         </div>
-
-      >
 
     </body>
     </html>
     """
-# 📥 DATA + ML + rain + 
+
+# 📥 DATA + ML + RAIN
 @app.route('/data', methods=['GET'])
 def receive_data():
-    global latest_data, last_alert_sent
+    global latest_data, latest_rain, latest_status, latest_irrigation
 
     try:
         moisture = float(request.args.get('moisture'))
@@ -148,33 +113,34 @@ def receive_data():
 
         latest_data = [moisture, temp, humidity]
 
-        # 🔥 ML prediction (REAL DATA)
+        # 🔥 ML prediction
         result = model.predict([[moisture, temp, humidity]])[0]
-        
-        #rain prediction
+
+        # 🌧️ Rain prediction
         rain = check_rain()
-        
-        # final decision
-        if rain == 1:
+        latest_rain = rain
+
+        # 🔥 FINAL DECISION
+        if rain > 0.6:
             decision = 0
         else:
             decision = result
 
-      
+        # 🔥 Status update
+        if decision == 1:
+            latest_status = "ON"
+            latest_irrigation = "YES"
+        else:
+            latest_status = "OFF"
+            latest_irrigation = "NO"
 
-🌱 Moisture: {moisture:.1f}%
-🌡 Temp: {temp:.1f}°C
-💧 Humidity: {humidity:.1f}%
-""")
         print("Decision:", decision, "Rain:", rain)
 
-        return "ON" if result == 1 else "OFF"
+        return "ON" if decision == 1 else "OFF"
 
     except Exception as e:
         print("Error:", e)
         return "Error"
 
-
-       
 if __name__ == "__main__":
     app.run()
