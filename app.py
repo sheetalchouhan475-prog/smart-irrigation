@@ -13,7 +13,7 @@ latest_rain = 0
 data = pd.read_csv("data.csv")
 
 X = data[['moisture', 'temperature', 'humidity']]
-y = data['pump data']
+y = data['Pump data']
 
 model = DecisionTreeClassifier()
 model.fit(X, y)
