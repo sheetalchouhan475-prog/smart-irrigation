@@ -1,45 +1,51 @@
 from flask import Flask, request
 from sklearn.tree import DecisionTreeClassifier
-import pandas as pd
-import requests
+import numpy as np
+import pandas as pd   # 🔥 NEW
 
 app = Flask(__name__)
 
-# 🔹 Latest data
-latest_data = [0, 0, 0]
-latest_rain = 0
 
-# 🔥 ML MODEL (CSV)
+# 🔹 Latest sensor data
+latest_data = [0, 0, 0]
+
+
+# 🔥 =========================
+# 🔥 ML MODEL (CSV BASED)
+# 🔥 =========================
+
+# CSV load karo
 data = pd.read_csv("data.csv")
 
+# ⚠️ Yaha apne CSV ke column name dalna
+# Example assume kar ra:
+# moisture, temperature, humidity, label
+
 X = data[['moisture', 'temperature', 'humidity']]
-y = data['Pump data']
+y = data['Pump Data']
 
 model = DecisionTreeClassifier()
 model.fit(X, y)
 
 print("Model trained using CSV ✅")
-
-# 🌧️ Rain function
+# rain function
 def check_rain():
     try:
-        url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=YOUR_API_KEY&units=metric"
-        
-        weather_data = requests.get(url).json()
-        pop = weather_data['list'][0]['pop']   # rain probability
-
-        print("Rain:", pop)
-        return pop
-
-    except Exception as e:
-        print("Rain API Error:", e)
-        return 0
-
-# 🌐 DASHBOARD
+        url ="https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=dbf4091609c1594c6f912ff35c6b1bcd&units=metric"
+        Wdata = requests.get(url).json()
+        pop = Wdata['list'][0]['pop']
+        print("rain probability:", pop)
+        if pop > 0.6:
+            return 1
+        elif:
+            return 0
+        else:
+            print("rain API error")
+            return 0
+#dashboard decoration
 @app.route('/')
 def dashboard():
     moisture, temp, humidity = latest_data
-    rain = latest_rain
 
     return f"""
     <html>
@@ -57,6 +63,17 @@ def dashboard():
             background: green;
             color: white;
             padding: 15px;
+        }}
+
+        .header h2 {{
+            margin: 5px;
+            font-size: 18px;
+        }}
+
+        .header h3 {{
+            margin: 5px;
+            font-size: 14px;
+            font-weight: normal;
         }}
 
         .box {{
@@ -78,40 +95,51 @@ def dashboard():
             padding: 0 20px;
             font-size: 14px;
         }}
+
+        .left {{
+            text-align: left;
+        }}
+
+        .right {{
+            text-align: right;
+        }}
     </style>
     </head>
 
     <body>
 
+    <!-- 🔝 Header -->
     <div class="header">
         <h2>Shivaji Rao Kadam Group of Institutions</h2>
-        <h3>EC Department</h3>
+        <h3>Department of Electronics & Communication (EC)</h3>
         <h1>Smart Farming Dashboard 🌱</h1>
     </div>
 
+    <!-- 📊 Data -->
     <div class="box">
         <p>🌱 Moisture: {moisture}</p>
         <p>🌡️ Temperature: {temp}</p>
         <p>💧 Humidity: {humidity}</p>
-        <p>🌧️ Rain Chance: {rain*100:.0f}%</p>
     </div>
 
+    <!-- 👇 Footer -->
     <div class="footer">
-        <div>
+        <div class="left">
             <b>Created by:</b><br>
             Sheetal Chouhan<br>
             Pramila Yadav<br>
             Mohit Verma
         </div>
 
+      >
+
     </body>
     </html>
     """
-
-# 📥 DATA + ML + RAIN
+# 📥 DATA + ML + rain + 
 @app.route('/data', methods=['GET'])
 def receive_data():
-    global latest_data, latest_rain
+    global latest_data, last_alert_sent
 
     try:
         moisture = float(request.args.get('moisture'))
@@ -120,26 +148,33 @@ def receive_data():
 
         latest_data = [moisture, temp, humidity]
 
-        # 🔥 ML prediction
+        # 🔥 ML prediction (REAL DATA)
         result = model.predict([[moisture, temp, humidity]])[0]
-
-        # 🌧️ Rain prediction
+        
+        #rain prediction
         rain = check_rain()
-        latest_rain = rain
-
-        # 🔥 FINAL DECISION
-        if rain > 0.6:
-            decision = 0   # rain aa raha → OFF
+        
+        # final decision
+        if rain == 1:
+            decision = 0
         else:
             decision = result
 
+      
+
+🌱 Moisture: {moisture:.1f}%
+🌡 Temp: {temp:.1f}°C
+💧 Humidity: {humidity:.1f}%
+""")
         print("Decision:", decision, "Rain:", rain)
 
-        return "ON" if decision == 1 else "OFF"
+        return "ON" if result == 1 else "OFF"
 
     except Exception as e:
         print("Error:", e)
         return "Error"
 
+
+       
 if __name__ == "__main__":
     app.run()
