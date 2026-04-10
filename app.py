@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # 🔹 Twilio WhatsApp credentials
 account_sid = "ACf00f77d32e4e2194eb9d2b32ccdf5bd0"
-auth_token = "2bf8608e12a9028c4940afb1adea5a9a"
+auth_token = "f53eaa2656020a12716bbd300cb29eba"
 
 twilio_number = "whatsapp:+14155238886"  
 your_number = "whatsapp:+917869707982"    
