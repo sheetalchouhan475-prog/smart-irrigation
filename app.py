@@ -42,7 +42,7 @@ print("Model trained using CSV")
 
 def check_rain():
     try:
-        url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=YOUR_API_KEY&units=metric"
+        url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=9902c67e295031db242872e0aa5f32f5&units=metric"
         
         response = requests.get(url)
         data = response.json()
