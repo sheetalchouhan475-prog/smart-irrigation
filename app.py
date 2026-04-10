@@ -12,7 +12,7 @@ app = Flask(__name__)
 account_sid = "ACac6d0f3dbea2d81420510d478e2abb27"
 auth_token = "43a111cb4507027e5b5b9500c856b477"
 
-twilio_number = "+14155238886"  
+twilio_number = "whatsapp:+14155238886"  
 your_number = "whatsapp:+917869707982"    
 
 client = Client(account_sid, auth_token)
