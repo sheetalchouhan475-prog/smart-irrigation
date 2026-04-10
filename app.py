@@ -44,20 +44,25 @@ def check_rain():
     try:
         url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=YOUR_API_KEY&units=metric"
         
-        data = requests.get(url).json()
-        pop = data['list'][0]['pop']
+        response = requests.get(url)
+        data = response.json()
+
+        print("FULL API RESPONSE:", data)  # 🔥 debug
+
+        # 🔥 Safe handling
+        if data.get("cod") != "200":
+            print("API Error:", data.get("message"))
+            return 0
+
+        pop = data['list'][0].get('pop', 0)
 
         print("Rain Probability:", pop)
 
-        if pop > 0.6:
-            return 1
-        else:
-            return 0
+        return 1 if pop > 0.6 else 0
 
     except Exception as e:
         print("Rain API Error:", e)
         return 0
-
 # 📩 WhatsApp function
 def send_whatsapp(message):
     try:
