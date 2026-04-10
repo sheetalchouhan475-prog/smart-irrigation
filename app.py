@@ -66,7 +66,7 @@ def send_whatsapp(message):
             from_=twilio_number,
             to=your_number
         )
-        print("WhatsApp Sent:",msg sid))
+        print("WhatsApp Sent:",msg sid)
     except Exception as e:
         import traceback
         print("WhatsApp Error")
