@@ -1,32 +1,59 @@
+# -*- coding: utf-8 -*-
+
 from flask import Flask, request
 from sklearn.tree import DecisionTreeClassifier
+import pandas as pd
+import requests
 from twilio.rest import Client
-import numpy as np
 
 app = Flask(__name__)
 
-# 🔹 Twilio credentials (yaha apna dalna)
+# 🔹 Twilio WhatsApp credentials
 account_sid = "L62UPLGEGF3V9CY7JFSS2NQ8"
 auth_token = "2bf8608e12a9028c4940afb1adea5a9a"
 
+twilio_number = "whatsapp:+14155238886"  
+your_number = "whatsapp:+917869707982"    
+
 client = Client(account_sid, auth_token)
 
-# 🔹 WhatsApp numbers
-twilio_number = 'whatsapp:+14155238886'
-farmer_number = 'whatsapp:+917869707982'
+# 🔹 Latest data
+latest_data = [0, 0, 0]
+latest_rain = 0
+latest_status = "OFF"
+latest_irrigation = "NO"
 
-# 🔹 ML Model
-X = [
-    [30, 35, 40],
-    [70, 25, 60],
-    [20, 38, 30],
-    [80, 22, 70],
-    [25, 36, 35]
-]
-y = [1, 0, 1, 0, 1]
+# 🔹 Alert control
+last_alert_sent = False
+
+# 🔥 =========================
+# 🔥 ML MODEL (CSV)
+# 🔥 =========================
+
+data = pd.read_csv("data.csv")
+
+X = data[['moisture', 'temperature', 'humidity']]
+y = data['Pump Data']
 
 model = DecisionTreeClassifier()
 model.fit(X, y)
+
+print("Model trained using CSV")
+
+# 🌧️ Rain function
+def check_rain():
+    try:
+        url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=YOUR_API_KEY&units=metric"
+        
+        wdata = requests.get(url).json()
+        pop = wdata['list'][0]['pop']
+
+        print("Rain:", pop)
+        return pop
+
+    except Exception as e:
+        print("Rain API Error:", e)
+        return 0
 
 # 📩 WhatsApp function
 def send_whatsapp(message):
@@ -34,38 +61,148 @@ def send_whatsapp(message):
         client.messages.create(
             body=message,
             from_=twilio_number,
-            to=farmer_number
+            to=your_number
         )
-        print("WhatsApp Sent ✅")
+        print("WhatsApp Sent")
     except Exception as e:
-        print("Error:", e)
+        import traceback
+        print("WhatsApp Error")
+        traceback.print_exc()
 
-# 📥 ESP32 data receive
+# 🌐 DASHBOARD
+@app.route('/')
+def dashboard():
+    moisture, temp, humidity = latest_data
+
+    return f"""
+    <html>
+    <head>
+    <title>Smart Farming Dashboard</title>
+    <style>
+        body {{
+            margin: 0;
+            font-family: Arial;
+            background: #e8f5e9;
+            text-align: center;
+        }}
+
+        .header {{
+            background: green;
+            color: white;
+            padding: 15px;
+        }}
+
+        .box {{
+            margin-top: 50px;
+            padding: 25px;
+            background: white;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px gray;
+            font-size: 18px;
+        }}
+
+        .footer {{
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 14px;
+        }}
+
+        .left {{
+            text-align: left;
+        }}
+
+        .right {{
+            text-align: right;
+        }}
+    </style>
+    </head>
+
+    <body>
+
+    <div class="header">
+        <h2>Shivaji Rao Kadam Group of Institutions</h2>
+        <h3>EC Department</h3>
+        <h1>Smart Farming Dashboard</h1>
+    </div>
+
+    <div class="box">
+        <p>Moisture: {moisture}</p>
+        <p>Temperature: {temp}</p>
+        <p>Humidity: {humidity}</p>
+        <p>Rain Chance: {latest_rain*100:.0f}%</p>
+        <p>Pump Status: {latest_status}</p>
+        <p>Irrigation Required: {latest_irrigation}</p>
+    </div>
+
+    <div class="footer">
+        <div class="left">
+            <b>Created by:</b><br>
+            Sheetal Chouhan<br>
+            Pramila Yadav<br>
+            Mohit Verma
+        </div>
+        </div>
+        
+
+    </body>
+    </html>
+    """
+
+# 📥 DATA + ML + RAIN + WHATSAPP
 @app.route('/data', methods=['GET'])
 def receive_data():
+    global latest_data, latest_rain, latest_status, latest_irrigation, last_alert_sent
+
     try:
         moisture = float(request.args.get('moisture'))
         temp = float(request.args.get('temperature'))
         humidity = float(request.args.get('humidity'))
 
-        print("Data:", moisture, temp, humidity)
+        latest_data = [moisture, temp, humidity]
 
-        # 🤖 ML Decision
-        result = model.predict(np.array([[moisture, temp, humidity]]))[0]
-        decision = "ON" if result == 1 else "OFF"
+        # 🔥 ML prediction
+        result = model.predict([[moisture, temp, humidity]])[0]
 
-        # 📩 WhatsApp message
-        msg = f"""🌱 Smart Farming Alert
+        # 🌧️ Rain prediction
+        rain = check_rain()
+        latest_rain = rain
+
+        # 🔥 FINAL DECISION
+        if rain > 0.6:
+            decision = 0
+        else:
+            decision = result
+
+        # 🔥 Status update
+        if decision == 1:
+            latest_status = "ON"
+            latest_irrigation = "YES"
+        else:
+            latest_status = "OFF"
+            latest_irrigation = "NO"
+
+        # 📩 WhatsApp alert
+        if decision == 1 and not last_alert_sent:
+            send_whatsapp(f"""
+Irrigation Required!
 
 Moisture: {moisture}
-Temperature: {temp}°C
-Humidity: {humidity}%
+Temperature: {temp}
+Humidity: {humidity}
+""")
+            last_alert_sent = True
 
-🚰 Pump: {decision}
-"""
-        send_whatsapp(msg)
+        if decision == 0:
+            last_alert_sent = False
 
-        return decision
+        print("Decision:", decision, "Rain:", rain)
+
+        return "ON" if decision == 1 else "OFF"
 
     except Exception as e:
         print("Error:", e)
