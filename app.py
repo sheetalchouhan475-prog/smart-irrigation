@@ -13,7 +13,7 @@ account_sid = "ACac6d0f3dbea2d81420510d478e2abb27"
 auth_token = "f53eaa2656020a12716bbd300cb29eba"
 
 twilio_number = "+14155238886"  
-your_number = "+917869707982"    
+your_number = "whatsapp:+917869707982"    
 
 client = Client(account_sid, auth_token)
 
