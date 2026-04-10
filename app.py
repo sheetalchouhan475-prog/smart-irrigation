@@ -40,16 +40,19 @@ model.fit(X, y)
 
 print("Model trained using CSV")
 
-# 🌧️ Rain function
 def check_rain():
     try:
         url = "https://api.openweathermap.org/data/2.5/forecast?q=Indore&appid=YOUR_API_KEY&units=metric"
         
-        wdata = requests.get(url).json()
-        pop = wdata['list'][0]['pop']
+        data = requests.get(url).json()
+        pop = data['list'][0]['pop']
 
-        print("Rain:", pop)
-        return pop
+        print("Rain Probability:", pop)
+
+        if pop > 0.6:
+            return 1
+        else:
+            return 0
 
     except Exception as e:
         print("Rain API Error:", e)
