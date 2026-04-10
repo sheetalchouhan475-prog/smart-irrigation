@@ -9,11 +9,11 @@ from twilio.rest import Client
 app = Flask(__name__)
 
 # 🔹 Twilio WhatsApp credentials
-account_sid = "ACf00f77d32e4e2194eb9d2b32ccdf5bd0"
+account_sid = "ACac6d0f3dbea2d81420510d478e2abb27"
 auth_token = "f53eaa2656020a12716bbd300cb29eba"
 
-twilio_number = "whatsapp:+14155238886"  
-your_number = "whatsapp:+917869707982"    
+twilio_number = "+14155238886"  
+your_number = "+917869707982"    
 
 client = Client(account_sid, auth_token)
 
@@ -66,7 +66,7 @@ def send_whatsapp(message):
             from_=twilio_number,
             to=your_number
         )
-        print("WhatsApp Sent")
+        print("WhatsApp Sent:",msg sid))
     except Exception as e:
         import traceback
         print("WhatsApp Error")
