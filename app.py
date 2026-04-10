@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 
 from flask import Flask, request
 from sklearn.tree import DecisionTreeClassifier
@@ -197,7 +197,7 @@ def receive_data():
         # 📩 WhatsApp alert
         if decision == 1 and not last_alert_sent:
             send_whatsapp(f"""
-Irrigation Required!
+mitti sukh gyi hai pani do!
 
 Moisture: {moisture}
 Temperature: {temp}
