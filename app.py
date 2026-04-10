@@ -209,18 +209,9 @@ Humidity: {humidity}
         print("Decision:", decision, "Rain:", rain)
 
         return "ON" if decision == 1 else "OFF"
-        return jsonify({
-            "moisture": moisture,
-            "temprature": temp,
-            "humidity": humidity,
-            "rain": rain,
-            "status": latest_status,
-            "irrigation": latest_irrigation
-        })
-
+       
     except Exception as e:
         print("Error:", e)
-        return jsonify({ "Error": "invalid data"})
-
+      
 if __name__ == "__main__":
     app.run()
