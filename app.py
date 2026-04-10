@@ -48,8 +48,6 @@ def check_rain():
         print("rain probability:", pop)
         if pop > 0.6:
             return 1
-        elif:
-            return 0
         else:
             print("rain API error")
             return 0
