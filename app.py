@@ -26,6 +26,7 @@ history = {
     "temprature": [],
     "humidity": [],
     "decision": []
+}
 
 last_alert_sent = False
 
