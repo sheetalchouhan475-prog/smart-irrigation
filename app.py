@@ -197,9 +197,9 @@ def receive_data():
             send_whatsapp(f"""
 mitti sukh gyi hai pani do!
 
-Moisture: {moisture}
-Temperature: {temp}
-Humidity: {humidity}
+🌱Moisture: {moisture}
+🌤️Temperature: {temp}
+🫧Humidity: {humidity}
 """)
             last_alert_sent = True
 
