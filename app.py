@@ -21,6 +21,12 @@ latest_rain = 0
 latest_status = "OFF"
 latest_irrigation = "NO"
 
+history = {
+    "moisture": [],
+    "temprature": [],
+    "humidity": [],
+    "decision": []
+
 last_alert_sent = False
 
 # 🔥 ML MODEL
@@ -79,6 +85,9 @@ def chart_data():
         "irrigation": latest_irrigation,
         "rain": latest_rain
     })
+  @app.route("/analysis-data")
+  def anaylis_data():
+      return jsonify(history)
 
 
 # 📥 SENSOR INPUT + ML + LOGIC
@@ -94,27 +103,26 @@ def receive_data():
         latest_data = [moisture, temp, humidity]
 
         # ML prediction
-        result = model.predict([[moisture, temp, humidity]])[0]
+        decision = model.predict([[moisture, temp, humidity]])[0]
 
         # Rain
         rain = check_rain()
         latest_rain = rain
 
-        decision = 0 if rain else result
-
-        if decision == 1:
-            latest_status = "ON"
-            latest_irrigation = "YES"
-        else:
-            latest_status = "OFF"
-            latest_irrigation = "NO"
+        final_decision = 0 if rain else decision
+        #status update 
+        latest_status = "ON" if final_decision == 1 else "OFF"
+        history["moisture"].append(moisture)
+         history["temprature"].append(temprature)
+         history["humidity"].append(humidity)
+         history["decision"].append(decision)
 
         # WhatsApp alert
-        if decision == 1 and not last_alert_sent:
+        if final_decision == 1 and not last_alert_sent:
             send_whatsapp(f"Irrigation ON!\nMoisture:{moisture}\nTemp:{temp}\nHumidity:{humidity}")
             last_alert_sent = True
 
-        if decision == 0:
+        if final_decision == 0:
             last_alert_sent = False
 
         return "OK"
